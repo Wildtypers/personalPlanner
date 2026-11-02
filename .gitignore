@@ -1,0 +1,22 @@
+# Installed dependencies
+node_modules/
+
+# Generated builds
+dist/
+
+# API keys and environment variables
+.env
+.env.*
+!.env.example
+
+# Local SQLite databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# Logs
+*.log
+
+# Operating system files
+Thumbs.db
