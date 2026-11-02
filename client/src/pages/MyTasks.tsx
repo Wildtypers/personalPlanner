@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Link } from "react-router-dom";
 
-const initialTasks = [
-	{ id: 1, title: "Finish React project", completed: 2, total: 5 },
-	{ id: 2, title: "CS 70 problem set", completed: 0, total: 4 },
-	{ id: 3, title: "Review EE lecture", completed: 3, total: 3 },
-];
+type Task = {
+	id: number;
+	title: string;
+	completed: number;
+	total: number;
+};
 
 function MyTasks() {
 	const [showForm, setShowForm] = useState(false);
     const [taskTitle, setTaskTitle] = useState("");
-    const [tasks, setTasks] = useState(initialTasks);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loadError, setLoadError] = useState("");
 
     function handleCreateTask() {
         const title = taskTitle.trim();
@@ -18,23 +22,54 @@ function MyTasks() {
             return;
         }
 
-        setTasks((previousTasks) => [
-            ...previousTasks,
-            {
-                id: Math.max(0, ...previousTasks.map((task) => task.id)) + 1,
-                title: title,
-                completed: 0,
-                total: 0,
-            },
-        ]);
+        setLoadError("");
 
-        setTaskTitle("");
-        setShowForm(false);
+        axios
+            .post<Task>("http://localhost:3001/api/tasks", { title })
+            .then((response) => {
+                setTasks((previousTasks) => [
+                    ...previousTasks,
+                    response.data,
+                ]);
+
+                setTaskTitle("");
+                setShowForm(false);
+            })
+            .catch(() => {
+                setLoadError("Could not create task. Please try again.");
+            });
     }
 
+    function handleDeleteTask(taskId: number) {
+        setLoadError("");
+
+        axios
+            .delete(`http://localhost:3001/api/tasks/${taskId}`)
+            .then(() => {
+                setTasks((previousTasks) =>
+                    previousTasks.filter((task) => task.id !== taskId)
+                );
+            })
+            .catch(() => {
+                setLoadError("Could not delete task. Please try again.");
+            });
+    }
+
+    useEffect(() => {
+        axios
+            .get<Task[]>("http://localhost:3001/api/tasks")
+            .then((response) => {
+                setTasks(response.data);
+            })
+            .catch(() => {
+                setLoadError("Could not load tasks.");
+            });
+    }, []);
+    
 	return (
 		<main>
-			<h1>My Tasks</h1>
+			<h1>My Tasks</h1>  
+            {loadError && <p>{loadError}</p>}
 			<p>Turn big assignments into clear next steps.</p>
 			<button onClick={() => setShowForm(true)}>
 				+ New task
@@ -66,7 +101,16 @@ function MyTasks() {
 
 			{tasks.map((task) => (
 				<article key={task.id}>
-					<h2>{task.title}</h2>
+                    <h2>{task.title}</h2>
+                    <Link to={`/tasks/${task.id}`}>
+                        Open task
+                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => handleDeleteTask(task.id)}
+                    >
+                        Delete
+                    </button>
 					{task.total > 0 ? (
                         <>
                             <p>
