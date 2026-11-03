@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import "./App.css";
-import "./index.css";
+import "../App.css";
+import "../index.css";
 
 type Task = {
 	id: number;
@@ -94,7 +94,6 @@ function MyTasks() {
             </div>
 
             {loadError && <p role="alert">{loadError}</p>}
-			<p>Turn big assignments into clear next steps.</p>
 			<button onClick={() => setShowForm(true)}>
 				+ New task
 			</button>
