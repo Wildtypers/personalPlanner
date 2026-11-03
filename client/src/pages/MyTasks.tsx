@@ -10,6 +10,9 @@ type Task = {
 };
 
 function MyTasks() {
+    const [requirements, setRequirements] = useState("");
+    const [deadline, setDeadline] = useState("");
+    const [availableHours, setAvailableHours] = useState("");
 	const [showForm, setShowForm] = useState(false);
     const [taskTitle, setTaskTitle] = useState("");
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -25,7 +28,13 @@ function MyTasks() {
         setLoadError("");
 
         axios
-            .post<Task>("http://localhost:3001/api/tasks", { title })
+            .post<Task>("http://localhost:3001/api/tasks", {
+                title,
+                requirements,
+                deadline: deadline || null,
+                available_hours:
+                    availableHours === "" ? null : Number(availableHours),
+            })
             .then((response) => {
                 setTasks((previousTasks) => [
                     ...previousTasks,
@@ -33,6 +42,9 @@ function MyTasks() {
                 ]);
 
                 setTaskTitle("");
+                setRequirements("");
+                setDeadline("");
+                setAvailableHours("");
                 setShowForm(false);
             })
             .catch(() => {
@@ -86,6 +98,39 @@ function MyTasks() {
                         value={taskTitle}
                         onChange={(event) => setTaskTitle(event.target.value)}
                     />
+                    <div>
+                        <label htmlFor="task-requirements">Requirements</label>
+                        <textarea
+                            id="task-requirements"
+                            placeholder="What needs to be done?"
+                            value={requirements}
+                            onChange={(event) => setRequirements(event.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="task-deadline">Deadline</label>
+                        <input
+                            id="task-deadline"
+                            type="date"
+                            value={deadline}
+                            onChange={(event) => setDeadline(event.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="task-hours">Available hours</label>
+                        <input
+                            id="task-hours"
+                            type="number"
+                            min="0.01"
+                            max="999.99"
+                            step="0.01"
+                            placeholder="For example, 6"
+                            value={availableHours}
+                            onChange={(event) => setAvailableHours(event.target.value)}
+                        />
+                    </div>
                     <button
                         type="button"
                         onClick={handleCreateTask}
