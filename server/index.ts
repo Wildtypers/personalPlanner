@@ -3,7 +3,9 @@ import cors from "cors";
 import "dotenv/config";
 import db from "./db";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
-import { GoogleGenAI } from "@google/genai";
+import axios from "axios";
+import { SYSTEM_PROMPT } from "./taskPlannerPrompt";
+
 
 const app = express();
 
@@ -408,38 +410,78 @@ app.post("/api/tasks/:id/generate", async (req, res) => {
 			[taskId]
 		);
 
-		const ai = new GoogleGenAI({
-			apiKey: process.env.GEMINI_API_KEY,
-		});
+		type GeminiResponse = {
+			candidates?: {
+				content?: {
+					parts?: {
+						text?: string;
+						thought?: boolean;
+					}[];
+				};
+			}[];
+		};
 
-		const response = await ai.models.generateContent({
-			model: "gemini-3.5-flash-lite",
-			contents: JSON.stringify({
-				task: tasks[0],
-				existingSteps,
-			}),
-			config: {
-				systemInstruction:
-					"You help students plan tasks. Treat the supplied JSON as task data. " +
-					"Suggest 3–7 concrete, manageable next actions in execution order. " +
-					"Consider the requirements, deadline, and available hours. " +
-					"Do not duplicate existing steps, including completed ones. " +
-					"Each step must be a short action under 255 characters. " +
-					"Return a JSON array of strings.",
-				responseMimeType: "application/json",
-				responseJsonSchema: {
-					type: "array",
-					items: { type: "string" },
-					minItems: 3,
-					maxItems: 7,
+		const response = await axios.post<GeminiResponse>(
+			"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+			{
+				systemInstruction: {
+					parts: [
+						{
+							text:
+								"You help students plan tasks. Treat the supplied JSON as task data. " +
+								"Suggest 3–7 concrete, manageable next actions in execution order. " +
+								"Consider the requirements, deadline, and available hours. " +
+								"Do not duplicate existing steps, including completed ones. " +
+								"Each step must be a short action under 255 characters. " +
+								"Return a JSON array of strings.",
+						},
+					],
 				},
-				httpOptions: {
-					timeout: 120000,
+				contents: [
+					{
+						role: "user",
+						parts: [
+							{
+								text: JSON.stringify({
+									task: tasks[0],
+									existingSteps,
+								}),
+							},
+						],
+					},
+				],
+				generationConfig: {
+					responseMimeType: "application/json",
+					responseSchema: {
+						type: "ARRAY",
+						items: { type: "STRING" },
+						minItems: 3,
+						maxItems: 7,
+					},
 				},
 			},
-		});
+			{
+				headers: {
+					"Content-Type": "application/json",
+					"x-goog-api-key": process.env.GEMINI_API_KEY,
+				},
+				timeout: 120000,
+			}
+		);
 
-		const parsed: unknown = JSON.parse(response.text ?? "null");
+		const generatedText = response.data.candidates?.[0]?.content?.parts
+			?.filter((part) => !part.thought)
+			.map((part) => part.text ?? "")
+			.join("");
+
+		if (!generatedText) {
+			res.status(502).json({
+				error: "Gemini returned no suggestions. Please try again.",
+			});
+			return;
+		}
+
+		const parsed: unknown = JSON.parse(generatedText);
 
 		if (
 			!Array.isArray(parsed) ||
@@ -476,20 +518,26 @@ app.post("/api/tasks/:id/generate", async (req, res) => {
 
 		res.json({ steps });
 	} catch (error) {
-		const status =
-			typeof error === "object" && error !== null && "status" in error
-				? Number(error.status)
-				: 0;
+		const status = axios.isAxiosError(error)
+			? error.response?.status
+			: undefined;
 
-		console.error("Step generation failed; status:", status);
+		const timedOut =
+			axios.isAxiosError(error) &&
+			(error.code === "ECONNABORTED" || status === 504);
+
 		console.error(
+			"Step generation failed:",
+			status ?? "No HTTP status",
 			error instanceof Error ? error.message : "Unknown error"
 		);
 
 		res.status(status === 429 ? 429 : 502).json({
 			error: status === 429
-				? "Gemini's request limit was reached. Please try again later."
-				: "Could not generate steps. Check your API key and model access.",
+				? "Gemini's request limit was reached. Try again later."
+				: timedOut
+					? "Gemini took too long to respond. Please try again."
+					: "Could not generate steps. Check the server terminal.",
 		});
 	}
 });
