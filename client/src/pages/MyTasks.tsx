@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import "./App.css";
+import "./index.css";
 
 type Task = {
 	id: number;
@@ -80,14 +82,24 @@ function MyTasks() {
     
 	return (
 		<main>
-			<h1>My Tasks</h1>  
-            {loadError && <p>{loadError}</p>}
+			<div className="page-heading">
+                <div>
+                    <h1>My Tasks</h1>
+                    <p>Turn big assignments into clear next steps.</p>
+                </div>
+
+                <button onClick={() => setShowForm(true)}>
+                    + New task
+                </button>
+            </div>
+
+            {loadError && <p role="alert">{loadError}</p>}
 			<p>Turn big assignments into clear next steps.</p>
 			<button onClick={() => setShowForm(true)}>
 				+ New task
 			</button>
 			{showForm && (
-				<section>
+                <section className="new-task-form">
 					<h2>New task</h2>
 
 					<label htmlFor="task-title">Task name</label>
@@ -138,36 +150,38 @@ function MyTasks() {
                     >
                         Create task
                     </button>
-					<button onClick={() => setShowForm(false)}>
+					<button className="secondary-button" onClick={() => setShowForm(false)}>
 						Cancel
 					</button>
 				</section>
 			)}
-
-			{tasks.map((task) => (
-				<article key={task.id}>
-                    <h2>{task.title}</h2>
-                    <Link to={`/tasks/${task.id}`}>
-                        Open task
-                    </Link>
-                    <button
-                        type="button"
-                        onClick={() => handleDeleteTask(task.id)}
-                    >
-                        Delete
-                    </button>
-					{task.total > 0 ? (
-                        <>
-                            <p>
-                                {task.completed} of {task.total} steps completed
-                            </p>
-                            <progress value={task.completed} max={task.total} />
-                        </>
-                    ) : (
-                        <p>No steps yet</p>
-                    )}
-				</article>
-			))}
+            <div className="task-grid">
+                {tasks.map((task) => (
+                    <article key={task.id}>
+                        <h2>{task.title}</h2>
+                        <Link to={`/tasks/${task.id}`}>
+                            Open task
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="danger-button"
+                        >
+                            Delete
+                        </button>
+                        {task.total > 0 ? (
+                            <>
+                                <p>
+                                    {task.completed} of {task.total} steps completed
+                                </p>
+                                <progress value={task.completed} max={task.total} />
+                            </>
+                        ) : (
+                            <p>No steps yet</p>
+                        )}
+                    </article>
+                ))}
+            </div>
 		</main>
 	);
 }

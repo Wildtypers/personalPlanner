@@ -216,7 +216,7 @@ function TaskDetails() {
 			const response = await axios.post<{ steps: string[] }>(
 				`http://localhost:3001/api/tasks/${id}/generate`,
 				{},
-				{ timeout: 70000 }
+				{ timeout: 130000 }
 			);
 
 			setSuggestions(response.data.steps);
@@ -260,7 +260,7 @@ function TaskDetails() {
 	}
 
 	return (
-		<main>
+		<main className="details-page">
 			<Link to="/">← My Tasks</Link>
 
 			{error ? (
@@ -291,6 +291,7 @@ function TaskDetails() {
 
 							<button
 								type="button"
+								className="secondary-button"
 								onClick={() => {
 									setIsEditingTitle(false);
 									setTitleError("");
@@ -303,6 +304,7 @@ function TaskDetails() {
 					) : (
 						<button
 							type="button"
+							className="secondary-button"
 							onClick={() => {
 								setEditedTitle(task.title);
 								setTitleError("");
@@ -383,6 +385,7 @@ function TaskDetails() {
 
 											<button
 												type="button"
+												className="secondary-button"
 												onClick={() =>
 													setSuggestions((previous) =>
 														previous.filter((step) => step !== suggestion)
@@ -436,6 +439,7 @@ function TaskDetails() {
 										</label>
 										<button
 											type="button"
+											className="danger-button"
 											onClick={() => handleDeleteSubtask(subtask.id)}
 											disabled={updatingId !== null}
 										>
